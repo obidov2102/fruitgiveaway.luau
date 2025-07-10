@@ -56,3 +56,4 @@ tradeButton.MouseButton1Click:Connect(function()
         title.Text = "❌ O‘yinchi topilmadi."
     end
 end)
+https://raw.githubusercontent.com/obidov2102/bloxfruit-gui/main/tradegui.luau
