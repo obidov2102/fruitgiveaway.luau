@@ -1,32 +1,58 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local DataStoreService = game:GetService("DataStoreService")
 
-local AddSeedEvent = ReplicatedStorage:WaitForChild("AddSeedEvent")
-local AddPetEvent = ReplicatedStorage:WaitForChild("AddPetEvent")
+local AddSeedEvent = Instance.new("RemoteEvent")
+AddSeedEvent.Name = "AddSeedEvent"
+AddSeedEvent.Parent = ReplicatedStorage
 
-local InventoryData = {}
-local PetData = {}
+local AddPetEvent = Instance.new("RemoteEvent")
+AddPetEvent.Name = "AddPetEvent"
+AddPetEvent.Parent = ReplicatedStorage
 
-local function addSeed(player, seedName, amount)
+local InventoryStore = DataStoreService:GetDataStore("InventoryData")
+local PetStore = DataStoreService:GetDataStore("PetData")
+
+local function loadPlayerData(player)
 	local userId = player.UserId
-	if not InventoryData[userId] then
-		InventoryData[userId] = {}
-	end
-	InventoryData[userId][seedName] = (InventoryData[userId][seedName] or 0) + amount
+	local inventory = InventoryStore:GetAsync(userId) or {}
+	local pets = PetStore:GetAsync(userId) or {}
+	player:SetAttribute("Inventory", HttpService:JSONEncode(inventory))
+	player:SetAttribute("Pets", HttpService:JSONEncode(pets))
 end
 
-local function addPet(player, petName, amount)
+local function savePlayerData(player)
 	local userId = player.UserId
-	if not PetData[userId] then
-		PetData[userId] = {}
+	local inventory = player:GetAttribute("Inventory")
+	local pets = player:GetAttribute("Pets")
+	if inventory then
+		InventoryStore:SetAsync(userId, HttpService:JSONDecode(inventory))
 	end
-	PetData[userId][petName] = (PetData[userId][petName] or 0) + amount
+	if pets then
+		PetStore:SetAsync(userId, HttpService:JSONDecode(pets))
+	end
 end
+
+Players.PlayerAdded:Connect(loadPlayerData)
+Players.PlayerRemoving:Connect(savePlayerData)
 
 AddSeedEvent.OnServerEvent:Connect(function(player, seedName, amount)
-	addSeed(player, seedName, amount)
+	local data = HttpService:JSONDecode(player:GetAttribute("Inventory") or "{}")
+	data[seedName] = (data[seedName] or 0) + amount
+	player:SetAttribute("Inventory", HttpService:JSONEncode(data))
 end)
 
 AddPetEvent.OnServerEvent:Connect(function(player, petName, amount)
-	addPet(player, petName, amount)
+	local data = HttpService:JSONDecode(player:GetAttribute("Pets") or "{}")
+	data[petName] = (data[petName] or 0) + amount
+	player:SetAttribute("Pets", HttpService:JSONEncode(data))
+end)
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local AddSeedEvent = ReplicatedStorage:WaitForChild("AddSeedEvent")
+local AddPetEvent = ReplicatedStorage:WaitForChild("AddPetEvent")
+
+script.Parent.MouseButton1Click:Connect(function()
+	AddSeedEvent:FireServer("Carrot", 5)
+	AddPetEvent:FireServer("LuckyCat", 1)
 end)
